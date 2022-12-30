@@ -6,7 +6,10 @@
 
 namespace Magento\Framework\Api;
 
+use Magento\Framework\DataObject;
 use Magento\Framework\Reflection\MethodsMap;
+
+use function is_subclass_of;
 
 /**
  * Service class allow populating object from array data
@@ -223,16 +226,29 @@ class DataObjectHelper
                             $value[$extensionAttributeKey][$key] = $extensionAttribute;
                         }
                     } else {
-                        $value[$extensionAttributeKey] = $this->objectFactory->create(
-                            $extensionAttributeType,
-                            ['data' => $extensionAttributeValue]
-                        );
+                        if (is_subclass_of($extensionAttributeType, DataObject::class)) {
+                            $value[$extensionAttributeKey] = $this->objectFactory->create(
+                                $extensionAttributeType,
+                                ['data' => $extensionAttributeValue]
+                            );
+                        } else {
+                            $extensionAttributeInner = $this->createNestedObject(
+                                $extensionAttributeType,
+                                $extensionAttributeValue
+                            );
+
+                            $value[$extensionAttributeKey] = $extensionAttributeInner;
+                        }
                     }
                 }
             }
             $object = $this->extensionFactory->create(get_class($dataObject), ['data' => $value]);
         } else {
-            $object = $this->objectFactory->create($returnType, $value);
+            if (is_subclass_of($returnType, DataObject::class)) {
+                $object = $this->objectFactory->create($returnType, $value);
+            } else {
+                $object = $this->createNestedObject($returnType, $value);
+            }
         }
         $dataObject->$methodName($object);
         return $this;
@@ -315,5 +331,24 @@ class DataObjectHelper
             $this->settersCache[$class] = array_flip($setters);
         }
         return $this->settersCache[$class];
+    }
+
+    /**
+     * @param       $returnType
+     * @param array $value
+     *
+     * @return object
+     */
+    private function createNestedObject($returnType, array $value)
+    {
+        $object = $this->objectFactory->create($returnType, []);
+
+        $this->populateWithArray(
+            $object,
+            $value,
+            $returnType
+        );
+
+        return $object;
     }
 }
