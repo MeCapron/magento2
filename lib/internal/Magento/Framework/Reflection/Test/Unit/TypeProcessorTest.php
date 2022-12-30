@@ -10,6 +10,7 @@ namespace Magento\Framework\Reflection\Test\Unit;
 
 use Laminas\Code\Reflection\ClassReflection;
 use Magento\Framework\Exception\SerializationException;
+use Magento\Framework\Reflection\Test\Unit\Fixture\FQN\SampleClass;
 use Magento\Framework\Reflection\Test\Unit\Fixture\TSample;
 use Magento\Framework\Reflection\Test\Unit\Fixture\TSampleInterface;
 use Magento\Framework\Reflection\Test\Unit\Fixture\UseClasses\SampleOne;
@@ -386,6 +387,24 @@ class TypeProcessorTest extends TestCase
         $classReflection = new ClassReflection(TSample::class);
         $methodReflection = $classReflection->getMethod('getName');
         $this->typeProcessor->getGetterReturnType($methodReflection);
+    }
+
+    public function testGetReturnTypeWithFqnAndClassAtSameFolder()
+    {
+        $classReflection = new ClassReflection(SampleClass::class);
+        $methodReflection = $classReflection->getMethod('getAttribute');
+
+        $result = $this->typeProcessor->getGetterReturnType($methodReflection);
+
+        self::assertEqualsCanonicalizing(
+            [
+                null,
+                '\Magento\Framework\Reflection\Test\Unit\Fixture\FQN\SampleAttribute',
+                0,
+                true
+            ],
+            $result
+        );
     }
 
     /**
