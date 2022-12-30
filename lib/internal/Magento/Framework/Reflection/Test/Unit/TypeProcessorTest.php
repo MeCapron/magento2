@@ -388,6 +388,24 @@ class TypeProcessorTest extends TestCase
         $this->typeProcessor->getGetterReturnType($methodReflection);
     }
 
+    public function testGetReturnTypeWithFqnAndClassAtSameFolder()
+    {
+        $classReflection = new ClassReflection(SampleClass::class);
+        $methodReflection = $classReflection->getMethod('getAttribute');
+
+        $result = $this->typeProcessor->getGetterReturnType($methodReflection);
+
+        self::assertEqualsCanonicalizing(
+            [
+                null,
+                '\Magento\Framework\Reflection\Test\Unit\Fixture\FQN\SampleAttribute',
+                0,
+                true
+            ],
+            $result
+        );
+    }
+
     /**
      * Checks a case when method return annotation has a null-type at first position,
      * and a valid type at second.
