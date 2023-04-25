@@ -7,6 +7,7 @@
 namespace Magento\Framework\Api;
 
 use Magento\Framework\Reflection\MethodsMap;
+use Magento\Framework\Reflection\SettersFields;
 
 /**
  * Service class allow populating object from array data
@@ -45,6 +46,8 @@ class DataObjectHelper
      */
     protected $methodsMapProcessor;
 
+    protected SettersFields $settersFields;
+
     /**
      * @param ObjectFactory $objectFactory
      * @param \Magento\Framework\Reflection\DataObjectProcessor $objectProcessor
@@ -52,6 +55,7 @@ class DataObjectHelper
      * @param \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory
      * @param \Magento\Framework\Api\ExtensionAttribute\JoinProcessorInterface $joinProcessor
      * @param MethodsMap $methodsMapProcessor
+     * @param SettersFields $settersFields
      */
     public function __construct(
         ObjectFactory $objectFactory,
@@ -59,7 +63,8 @@ class DataObjectHelper
         \Magento\Framework\Reflection\TypeProcessor $typeProcessor,
         \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory,
         \Magento\Framework\Api\ExtensionAttribute\JoinProcessorInterface $joinProcessor,
-        MethodsMap $methodsMapProcessor
+        MethodsMap $methodsMapProcessor,
+        SettersFields $settersFields
     ) {
         $this->objectFactory = $objectFactory;
         $this->objectProcessor = $objectProcessor;
@@ -67,6 +72,7 @@ class DataObjectHelper
         $this->extensionFactory = $extensionFactory;
         $this->joinProcessor = $joinProcessor;
         $this->methodsMapProcessor = $methodsMapProcessor;
+        $this->settersFields = $settersFields;
     }
 
     /**
@@ -101,7 +107,7 @@ class DataObjectHelper
         if (empty($data)) {
             return $this;
         }
-        $setMethods = $this->getSetters($dataObject);
+        $setFields = $this->settersFields->get($dataObject);
         if ($dataObject instanceof ExtensibleDataInterface
             && !empty($data[CustomAttributesDataInterface::CUSTOM_ATTRIBUTES])
         ) {
@@ -121,14 +127,14 @@ class DataObjectHelper
                 $dataObject->setId($simpleData['id']);
                 unset($simpleData['id']);
             }
-            $simpleData = array_intersect_key($simpleData, $setMethods);
+            $simpleData = array_intersect_key($simpleData, $setFields);
             $dataObject->addData($simpleData);
             $data = array_diff_key($data, $simpleData);
             if (\count($data) === 0) {
                 return $this;
             }
         }
-        foreach (array_intersect_key($data, $setMethods) as $key => $value) {
+        foreach (array_intersect_key($data, $setFields) as $key => $value) {
             $methodName = SimpleDataObjectConverter::snakeCaseToUpperCamelCase($key);
 
             if (!is_array($value)) {
@@ -279,41 +285,5 @@ class DataObjectHelper
             }
         }
         return $attributeValueArray;
-    }
-
-    /** @var array  */
-    private array $settersCache = [];
-
-    /**
-     * Get list of setters for object
-     *
-     * @param object $dataObject
-     * @return array
-     */
-    private function getSetters(object $dataObject): array
-    {
-        $class = get_class($dataObject);
-        if (!isset($this->settersCache[$class])) {
-            $dataObjectMethods = get_class_methods($class);
-            // use regexp to manipulate with method list as it use jit starting with PHP 7.3
-            $setters = array_filter(
-                explode(
-                    ',',
-                    strtolower(
-                        // (0) remove all not setter
-                        // (1) add _ before upper letter
-                        // (2) remove set_ in start of name
-                        // (3) add name without is_ prefix
-                        preg_replace(
-                            ['/(^|,)(?!set)[^,]*/S','/(.)([A-Z])/S', '/(^|,)set_/iS', '/(^|,)is_([^,]+)/is'],
-                            ['', '$1_$2', '$1', '$1$2,is_$2'],
-                            implode(',', $dataObjectMethods)
-                        )
-                    )
-                )
-            );
-            $this->settersCache[$class] = array_flip($setters);
-        }
-        return $this->settersCache[$class];
     }
 }
