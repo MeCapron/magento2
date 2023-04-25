@@ -172,6 +172,6 @@ class SimpleDataObjectConverter
      */
     public static function camelCaseToSnakeCase($name)
     {
-        return $name !== null ? strtolower(preg_replace('/(.)([A-Z])/', "$1_$2", $name)) : '';
+        return $name !== null ? strtolower(preg_replace('/[A-Z]/', '_\0', lcfirst($name))) : '';
     }
 }
